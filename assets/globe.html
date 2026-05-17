@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a001a; overflow: hidden; touch-action: none; }
+  canvas { display: block; }
+  #loading {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: #FFB6C1; font-family: sans-serif; font-size: 16px; z-index: 10;
+  }
+</style>
+</head>
+<body>
+<div id="loading">Loading your world...</div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.157.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.157.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 4.5;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x1a001a, 1);
+document.body.appendChild(renderer.domElement);
+document.getElementById('loading').style.display = 'none';
+
+const pinkGlow = new THREE.Color('#FF69B4');
+const darkPink = new THREE.Color('#C71585');
+const lightPink = new THREE.Color('#FFB6C1');
+
+const globeGroup = new THREE.Group();
+scene.add(globeGroup);
+
+const segments = 128;
+const globeGeom = new THREE.SphereGeometry(1.5, segments, segments);
+const positions = globeGeom.attributes.position;
+const colors = new Float32Array(positions.count * 3);
+
+for (let i = 0; i < positions.count; i++) {
+  const x = positions.getX(i);
+  const y = positions.getY(i);
+  const z = positions.getZ(i);
+  const mixFactor = (y + 1.5) / 3.0;
+  const c = new THREE.Color().lerpColors(darkPink, lightPink, mixFactor);
+  colors[i * 3] = c.r;
+  colors[i * 3 + 1] = c.g;
+  colors[i * 3 + 2] = c.b;
+}
+
+globeGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+const globeMat = new THREE.MeshPhongMaterial({
+  vertexColors: true,
+  shininess: 25,
+  specular: new THREE.Color('#FF69B4'),
+  transparent: true,
+  opacity: 0.92,
+});
+
+const globe = new THREE.Mesh(globeGeom, globeMat);
+globeGroup.add(globe);
+
+const atmosGeom = new THREE.SphereGeometry(1.58, 64, 64);
+const atmosMat = new THREE.ShaderMaterial({
+  vertexShader: `
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      vPosition = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    void main() {
+      float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+      gl_FragColor = vec4(1.0, 0.42, 0.71, intensity * 0.6);
+    }
+  `,
+  blending: THREE.AdditiveBlending,
+  side: THREE.FrontSide,
+  transparent: true,
+  depthWrite: false,
+});
+const atmosphere = new THREE.Mesh(atmosGeom, atmosMat);
+globeGroup.add(atmosphere);
+
+const gridMat = new THREE.MeshBasicMaterial({
+  color: 0xFF69B4,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.06,
+});
+const gridGeom = new THREE.SphereGeometry(1.505, 48, 24);
+const grid = new THREE.Mesh(gridGeom, gridMat);
+globeGroup.add(grid);
+
+const ringGeom = new THREE.TorusGeometry(1.52, 0.004, 16, 100);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xFFB6C1, transparent: true, opacity: 0.4 });
+const ring1 = new THREE.Mesh(ringGeom, ringMat);
+const ring2 = new THREE.Mesh(ringGeom, ringMat);
+ring2.rotation.x = Math.PI / 2;
+globeGroup.add(ring1);
+globeGroup.add(ring2);
+
+const particlesGeom = new THREE.BufferGeometry();
+const particlesCount = 800;
+const particlesPositions = new Float32Array(particlesCount * 3);
+for (let i = 0; i < particlesCount; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = 1.55 + Math.random() * 0.3;
+  particlesPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+  particlesPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+  particlesPositions[i * 3 + 2] = r * Math.cos(phi);
+}
+particlesGeom.setAttribute('position', new THREE.BufferAttribute(particlesPositions, 3));
+const particlesMat = new THREE.PointsMaterial({
+  color: 0xFFB6C1,
+  size: 0.008,
+  blending: THREE.AdditiveBlending,
+  transparent: true,
+  depthWrite: false,
+});
+const particles = new THREE.Points(particlesGeom, particlesMat);
+globeGroup.add(particles);
+
+const ambientLight = new THREE.AmbientLight(0x444466, 1.5);
+scene.add(ambientLight);
+const sunLight = new THREE.DirectionalLight(0xffccdd, 2.5);
+sunLight.position.set(5, 3, 5);
+scene.add(sunLight);
+const fillLight = new THREE.DirectionalLight(0x8866aa, 0.8);
+fillLight.position.set(-3, -1, -2);
+scene.add(fillLight);
+
+const backLight = new THREE.PointLight(0xFF69B4, 3, 8);
+backLight.position.set(0, 0, -4);
+scene.add(backLight);
+
+const photoSprites = [];
+const spriteGroup = new THREE.Group();
+globeGroup.add(spriteGroup);
+
+const BASE_RADIUS = 1.52;
+
+function latLngToVec3(lat, lng, radius) {
+  const phi = (90 - lat) * (Math.PI / 180);
+  const theta = (lng + 180) * (Math.PI / 180);
+  return new THREE.Vector3(
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+function createPhotoSprite(photo) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+
+  ctx.beginPath();
+  ctx.arc(32, 32, 28, 0, Math.PI * 2);
+  ctx.clip();
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, 64, 64);
+    ctx.beginPath();
+    ctx.arc(32, 32, 28, 0, Math.PI * 2);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#FF69B4';
+    ctx.stroke();
+
+    const outerCtx = canvas.getContext('2d');
+    outerCtx.drawImage(canvas, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: true,
+    });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(0.2, 0.2, 1);
+    const pos = latLngToVec3(photo.lat, photo.lng, BASE_RADIUS);
+    sprite.position.copy(pos);
+    sprite.userData = { photoId: photo.id, lat: photo.lat, lng: photo.lng };
+
+    const poleGeom = new THREE.CylinderGeometry(0.015, 0.015, 0.1, 8);
+    const poleMat = new THREE.MeshBasicMaterial({ color: 0xFF69B4 });
+    const pole = new THREE.Mesh(poleGeom, poleMat);
+    const innerPos = latLngToVec3(photo.lat, photo.lng, BASE_RADIUS - 0.08);
+    const outerPos = latLngToVec3(photo.lat, photo.lng, BASE_RADIUS);
+    pole.position.copy(innerPos.clone().add(outerPos).multiplyScalar(0.5));
+    pole.lookAt(outerPos);
+    pole.rotateX(Math.PI / 2);
+
+    spriteGroup.add(pole);
+    spriteGroup.add(sprite);
+    photoSprites.push({ sprite, pole, id: photo.id });
+  };
+  img.src = photo.uri;
+}
+
+function clearAllPhotos() {
+  while (spriteGroup.children.length > 0) {
+    const child = spriteGroup.children[0];
+    if (child.material && child.material.map) {
+      child.material.map.dispose();
+    }
+    if (child.material) child.material.dispose();
+    spriteGroup.remove(child);
+  }
+  photoSprites.length = 0;
+}
+
+function setPhotos(photos) {
+  clearAllPhotos();
+  photos.forEach((photo) => createPhotoSprite(photo));
+}
+
+window.addEventListener('message', (event) => {
+  try {
+    const data = JSON.parse(event.data);
+    if (data.type === 'setPhotos') {
+      setPhotos(data.photos);
+    } else if (data.type === 'addPhoto') {
+      createPhotoSprite(data.photo);
+    } else if (data.type === 'removePhoto') {
+      const toRemove = [];
+      spriteGroup.children.forEach((child, idx) => {
+        if (child.userData && child.userData.photoId === data.id) {
+          toRemove.push(idx);
+        }
+      });
+      for (let i = toRemove.length - 1; i >= 0; i--) {
+        const child = spriteGroup.children[toRemove[i]];
+        if (child.material && child.material.map) child.material.map.dispose();
+        if (child.material) child.material.dispose();
+        spriteGroup.remove(child);
+      }
+      for (let i = photoSprites.length - 1; i >= 0; i--) {
+        if (photoSprites[i].id === data.id) photoSprites.splice(i, 1);
+      }
+    }
+  } catch (e) {
+    console.error('Message parse error:', e);
+  }
+});
+
+let isDragging = false;
+let prevMouse = { x: 0, y: 0 };
+let rotationVelocity = { x: 0, y: 0 };
+let autoRotate = true;
+const AUTO_ROTATE_SPEED = 0.003;
+let pinchStartDist = 0;
+let pinchStartZ = 4.5;
+
+function onPointerDown(e) {
+  e.preventDefault();
+  isDragging = true;
+  autoRotate = false;
+  prevMouse.x = e.clientX || e.touches[0].clientX;
+  prevMouse.y = e.clientY || e.touches[0].clientY;
+  if (e.touches && e.touches.length === 2) {
+    pinchStartDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    pinchStartZ = camera.position.z;
+  }
+}
+
+function onPointerMove(e) {
+  e.preventDefault();
+  if (!isDragging) return;
+  const clientX = e.clientX || e.touches[0].clientX;
+  const clientY = e.clientY || e.touches[0].clientY;
+
+  if (e.touches && e.touches.length === 2) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const scale = pinchStartDist / Math.max(dist, 0.1);
+    camera.position.z = Math.max(2.5, Math.min(8, pinchStartZ * scale));
+    return;
+  }
+
+  const deltaX = clientX - prevMouse.x;
+  const deltaY = clientY - prevMouse.y;
+  rotationVelocity.x = deltaY * 0.005;
+  rotationVelocity.y = deltaX * 0.005;
+  globeGroup.rotation.x += rotationVelocity.x;
+  globeGroup.rotation.y += rotationVelocity.y;
+  prevMouse.x = clientX;
+  prevMouse.y = clientY;
+}
+
+function onPointerUp(e) {
+  e.preventDefault();
+  isDragging = false;
+  setTimeout(() => { autoRotate = true; }, 2000);
+}
+
+function onTap(e) {
+  if (isDragging) return;
+  const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+  const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+  if (!clientX) return;
+
+  const mouse = new THREE.Vector2(
+    (clientX / window.innerWidth) * 2 - 1,
+    -(clientY / window.innerHeight) * 2 + 1
+  );
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(spriteGroup.children, true);
+  if (intersects.length > 0) {
+    let obj = intersects[0].object;
+    while (obj) {
+      if (obj.userData && obj.userData.photoId) {
+        window.ReactNativeWebView.postMessage(
+          JSON.stringify({ type: 'photoTap', id: obj.userData.photoId })
+        );
+        return;
+      }
+      obj = obj.parent;
+    }
+  }
+}
+
+renderer.domElement.addEventListener('pointerdown', onPointerDown);
+renderer.domElement.addEventListener('pointermove', onPointerMove);
+window.addEventListener('pointerup', onPointerUp);
+renderer.domElement.addEventListener('click', onTap);
+
+renderer.domElement.style.touchAction = 'none';
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (autoRotate && !isDragging) {
+    globeGroup.rotation.y += AUTO_ROTATE_SPEED;
+    rotationVelocity.x *= 0.95;
+    rotationVelocity.y *= 0.95;
+  } else if (!isDragging) {
+    if (Math.abs(rotationVelocity.x) > 0.0001 || Math.abs(rotationVelocity.y) > 0.0001) {
+      globeGroup.rotation.x += rotationVelocity.x;
+      globeGroup.rotation.y += rotationVelocity.y;
+      rotationVelocity.x *= 0.95;
+      rotationVelocity.y *= 0.95;
+    }
+  }
+
+  particles.rotation.y += 0.0005;
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

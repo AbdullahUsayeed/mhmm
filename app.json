@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Raisa's World",
+    "slug": "raisa-birthday",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "raisaworld",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#FFB6C1"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.usayeed.raisaworld"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFB6C1"
+      },
+      "package": "com.usayeed.raisaworld"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF69B4"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Raisa's World to access your photos so you can add them to your globe.",
+          "cameraPermission": "Allow Raisa's World to use your camera to capture moments for your globe."
+        }
+      ],
+      "expo-router"
+    ]
+  }
+}
