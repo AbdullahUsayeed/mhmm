@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a001a">
+<link rel="manifest" href="/manifest.json">
+<title>My World</title>
+<style>
+  :root { --bg: #1a001a; --bg-light: #2d002d; --white: #FFFFFF; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--white); }
+  body { display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
+
+  #welcome-screen, #globe-screen { width:100%; height:100%; position:absolute; top:0; left:0; transition:opacity 0.6s,transform 0.6s; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  #welcome-screen { z-index:10; opacity:1; }
+  #welcome-screen.hidden { opacity:0; transform:scale(1.1); pointer-events:none; }
+  #globe-screen { z-index:5; opacity:0; }
+  #globe-screen.visible { opacity:1; z-index:10; }
+  #not-found { display:none; z-index:20; text-align:center; padding:40px; }
+  #not-found.show { display:flex; flex-direction:column; align-items:center; gap:16px; }
+  #not-found h1 { font-size:3rem; }
+  #not-found p { color:rgba(255,255,255,0.6); font-size:1rem; }
+  #not-found a { color:#FF69B4; text-decoration:none; font-weight:600; }
+
+  .welcome-bg { position:absolute; top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at center, #3d004d 0%, #1a001a 50%, #0a000a 100%); z-index:-1; }
+  .sparkles { position:absolute; top:0;left:0;width:100%;height:100%; pointer-events:none; z-index:0; }
+
+  .by-line { font-size:0.8rem; color:rgba(255,182,193,0.7); letter-spacing:3px; text-transform:uppercase; margin-bottom:16px; z-index:1; }
+  .you-are { font-size:1.5rem; color:var(--pink-light); letter-spacing:4px; text-transform:uppercase; margin-bottom:4px; z-index:1; }
+  .my-world { font-size:2.8rem; font-weight:800; color:var(--pink); letter-spacing:2px; text-shadow:0 0 30px rgba(255,105,180,0.6); z-index:1; margin-bottom:12px; }
+  .globe-emoji { font-size:5rem; z-index:1; animation:float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-12px); } }
+
+  .birthday-card {
+    background:rgba(255,105,180,0.1); border:1px solid rgba(255,105,180,0.25);
+    border-radius:20px; padding:20px 24px; margin-top:10px; z-index:1;
+    text-align:center; max-width:85vw;
+  }
+  .confetti-row { font-size:1.4rem; letter-spacing:6px; margin:4px 0; }
+  .birthday-title { font-size:1.4rem; font-weight:700; color:var(--white); margin:8px 0; }
+  .birthday-sub { font-size:0.9rem; color:var(--pink-light); font-style:italic; }
+  .age-text { font-size:1.1rem; color:var(--pink-light); line-height:1.6; }
+  .countdown-text { font-size:0.85rem; color:rgba(255,182,193,0.65); margin-top:8px; }
+
+  .continue-btn {
+    position:absolute; bottom:50px; z-index:1;
+    background:var(--pink); color:var(--white);
+    padding:16px 48px; border-radius:30px;
+    font-size:1.2rem; font-weight:700; letter-spacing:1px;
+    border:none; cursor:pointer;
+    box-shadow:0 4px 20px rgba(255,105,180,0.5);
+    transition:transform 0.2s;
+  }
+  .continue-btn:active { transform:scale(0.95); }
+  .tap-hint { position:absolute; bottom:24px; z-index:1; font-size:0.7rem; color:rgba(255,182,193,0.4); letter-spacing:2px; }
+  .make-your-own { position:absolute; bottom:100px; z-index:1; font-size:0.7rem; color:rgba(255,182,193,0.5); }
+  .make-your-own a { color:rgba(255,105,180,0.8); text-decoration:none; }
+
+  .top-bar {
+    position:absolute; top:max(8px, env(safe-area-inset-top)); left:12px; right:12px;
+    display:flex; align-items:center; justify-content:space-between; z-index:5;
+    background:rgba(26,0,26,0.45); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border-radius:16px; border:1px solid rgba(255,105,180,0.12); padding:10px 14px;
+  }
+  .top-title { font-size:1rem; font-weight:700; color:var(--pink); letter-spacing:2px; }
+  .top-sub { font-size:0.7rem; color:var(--pink-light); }
+  .year-select {
+    background:rgba(255,105,180,0.15); color:var(--pink-light); border:1px solid rgba(255,105,180,0.25);
+    border-radius:12px; padding:8px 12px; font-size:0.75rem; font-weight:600;
+    outline:none; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  }
+  .year-select option { background:#2d002d; color:white; }
+
+  #globe-container { width:100%; height:100%; position:absolute; top:0; left:0; }
+  #photo-modal {
+    display:none; position:fixed; top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.94); z-index:100;
+    justify-content:center; align-items:center;
+  }
+  #photo-modal.show { display:flex; }
+  .modal-close {
+    position:absolute; top:max(30px, env(safe-area-inset-top)); right:20px;
+    width:40px; height:40px; border-radius:20px;
+    background:rgba(255,255,255,0.1); border:none; color:white;
+    font-size:18px; cursor:pointer;
+  }
+  #photo-modal img { max-width:90vw; max-height:70vh; border-radius:16px; object-fit:contain; }
+
+  #loading-screen { position:fixed; top:0;left:0;width:100%;height:100%; background:var(--bg); z-index:100; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #loading-screen.done { display:none; }
+  .loader { width:40px; height:40px; border:3px solid rgba(255,105,180,0.2); border-top-color:#FF69B4; border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loader"></div>
+  <div style="color:#FFB6C1;font-size:0.9rem;">Loading your world...</div>
+</div>
+
+<div id="not-found">
+  <h1>🌍</h1>
+  <h2 style="color:#FF69B4;">Globe not found</h2>
+  <p>This birthday globe doesn't exist or the link is wrong.</p>
+  <a href="/">Create your own →</a>
+</div>
+
+<div id="welcome-screen">
+  <div class="welcome-bg"></div>
+  <canvas class="sparkles" id="sparkles-canvas"></canvas>
+  <div class="by-line" id="by-line"></div>
+  <div class="you-are" id="you-are-text">You are</div>
+  <div class="my-world" id="my-world-text">My World</div>
+  <div class="globe-emoji">🌍</div>
+  <div class="birthday-card" id="birthday-card"></div>
+  <button class="continue-btn" id="continue-btn">Continue →</button>
+  <div class="tap-hint">tap to enter your world</div>
+  <div class="make-your-own"><a href="/">✨ Make one for someone special</a></div>
+</div>
+
+<div id="globe-screen">
+  <div class="top-bar">
+    <div><div class="top-title" id="globe-partner-name"></div><div class="top-sub" id="memory-count">0 memories</div></div>
+    <select class="year-select" id="year-select"></select>
+  </div>
+  <div id="globe-container"></div>
+</div>
+
+<div id="photo-modal">
+  <button class="modal-close" id="modal-close-btn">✕</button>
+  <img id="photo-full" src="" alt="Memory" />
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.157.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const SUPABASE_URL = 'https://ykpsbzbwyctburjesrod.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_kHCzuXOC8mpoMHAV7grCpA_nRVgQYYj';
+
+function sbHeaders() {
+  return { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+}
+
+async function fetchGlobe(slug) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/globes?slug=eq.${encodeURIComponent(slug)}&select=*`, { headers: sbHeaders() });
+  if (!res.ok || !(await res.json()).length) return null;
+  return (await res.json())[0];
+}
+
+async function fetchPhotos(globeId, yearKey) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/photos?globe_id=eq.${encodeURIComponent(globeId)}&year_key=eq.${encodeURIComponent(yearKey)}&order=added_at.desc`, { headers: sbHeaders() });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+const THEMES = {
+  pink:   { primary:'#FF69B4', light:'#FFB6C1', dark:'#C71585', bg:'#1a001a', glow:'#3d004d', text:'#FFD6E8', accent:'#DB2779' },
+  blue:   { primary:'#4DA6FF', light:'#B3D9FF', dark:'#1E40AF', bg:'#001a2e', glow:'#001a3d', text:'#D6EAFF', accent:'#2563EB' },
+  purple: { primary:'#A855F7', light:'#D8B4FE', dark:'#6B21A8', bg:'#1a002e', glow:'#2d004d', text:'#E9D5FF', accent:'#7C3AED' },
+  emerald:{ primary:'#34D399', light:'#A7F3D0', dark:'#047857', bg:'#001a0e', glow:'#002d18', text:'#D1FAE5', accent:'#059669' },
+  dark:   { primary:'#F472B6', light:'#FBCFE8', dark:'#831843', bg:'#0a0a0a', glow:'#1a1a1a', text:'#FCE7F3', accent:'#BE185D' },
+  sunset: { primary:'#FB923C', light:'#FED7AA', dark:'#C2410C', bg:'#1a0a00', glow:'#2d1500', text:'#FFEDD5', accent:'#EA580C' },
+};
+
+let globe, theme;
+
+let scene, camera, renderer, globeGroup, spriteGroup, oceanParticles, oceanTime = 0;
+let starMat, starField, shootingStars = [], heartOrbits = [], constellationLines;
+let photoSprites = [];
+let isDragging = false, prevMouse = {x:0,y:0}, rotVel = {x:0,y:0}, autoRotate = true;
+let dragStart = {x:0,y:0}, totalDrag = 0;
+let pinchStartDist = 0, pinchStartZ = 4.5;
+const AUTO_ROTATE_SPEED = 0.003;
+const BASE_RADIUS = 1.52;
+let currentYearKey = '';
+
+const CONTINENT_POINTS = [
+  { name:'North America', points:[
+    {lat:70,lng:-158},{lat:66,lng:-162},{lat:60,lng:-148},{lat:58,lng:-138},{lat:55,lng:-132},{lat:50,lng:-126},{lat:46,lng:-124},{lat:42,lng:-124},
+    {lat:38,lng:-122},{lat:34,lng:-119},{lat:32,lng:-117},{lat:28,lng:-112},{lat:24,lng:-110},{lat:20,lng:-106},{lat:16,lng:-98},{lat:13,lng:-90},
+    {lat:10,lng:-84},{lat:8,lng:-79},{lat:8,lng:-77},{lat:12,lng:-72},{lat:18,lng:-76},{lat:22,lng:-78},{lat:25,lng:-80},{lat:30,lng:-81},
+    {lat:35,lng:-76},{lat:40,lng:-74},{lat:43,lng:-69},{lat:46,lng:-63},{lat:50,lng:-56},{lat:54,lng:-57},{lat:58,lng:-62},{lat:63,lng:-70},
+    {lat:67,lng:-84},{lat:70,lng:-106},{lat:71,lng:-140},
+  ]},
+  { name:'South America', points:[
+    {lat:12,lng:-72},{lat:10,lng:-75},{lat:5,lng:-77},{lat:0,lng:-80},{-4,lng:-81},{-10,lng:-77},{-16,lng:-72},{-20,lng:-70},
+    {-24,lng:-66},{-28,lng:-62},{-32,lng:-57},{-35,lng:-55},{-38,lng:-58},{-42,lng:-65},{-46,lng:-68},{-50,lng:-73},
+    {-52,lng:-71},{-48,lng:-65},{-40,lng:-58},{-34,lng:-54},{-27,lng:-48},{-20,lng:-40},{-12,lng:-38},{-4,lng:-36},
+    {lat:0,lng:-50},{lat:5,lng:-62},{lat:10,lng:-68},
+  ]},
+  { name:'Europe', points:[
+    {lat:70,lng:25},{lat:68,lng:16},{lat:65,lng:12},{lat:61,lng:5},{lat:58,lng:-5},{lat:52,lng:-8},{lat:48,lng:-5},{lat:44,lng:-2},
+    {lat:43,lng:3},{lat:43,lng:6},{lat:45,lng:8},{lat:45,lng:13},{lat:43,lng:16},{lat:40,lng:18},{lat:37,lng:15},{lat:36,lng:22},
+    {lat:38,lng:25},{lat:42,lng:26},{lat:44,lng:29},{lat:46,lng:31},{lat:48,lng:35},{lat:52,lng:35},{lat:55,lng:38},{lat:58,lng:40},
+    {lat:60,lng:35},{lat:62,lng:28},{lat:66,lng:25},{lat:70,lng:28},
+  ]},
+  { name:'Africa', points:[
+    {lat:36,lng:-6},{lat:34,lng:-5},{lat:32,lng:-10},{lat:28,lng:-14},{lat:22,lng:-17},{lat:14,lng:-17},{lat:10,lng:-15},{lat:5,lng:-10},
+    {lat:2,lng:8},{lat:5,lng:10},{lat:0,lng:10},{-5,lng:12},{-10,lng:14},{-20,lng:15},{-26,lng:16},{-30,lng:18},
+    {-33,lng:26},{-30,lng:32},{-25,lng:34},{-20,lng:35},{-12,lng:42},{lat:0,lng:43},{lat:5,lng:46},{lat:10,lng:52},
+    {lat:12,lng:43},{lat:18,lng:38},{lat:24,lng:36},{lat:30,lng:32},{lat:32,lng:25},{lat:35,lng:20},{lat:36,lng:10},
+  ]},
+  { name:'Asia', points:[
+    {lat:70,lng:30},{lat:72,lng:60},{lat:72,lng:100},{lat:70,lng:130},{lat:66,lng:160},{lat:60,lng:165},{lat:54,lng:145},{lat:46,lng:138},
+    {lat:40,lng:130},{lat:35,lng:128},{lat:30,lng:122},{lat:22,lng:116},{lat:16,lng:108},{lat:10,lng:106},{lat:8,lng:104},{lat:2,lng:104},
+    {lat:0,lng:100},{-5,lng:106},{-8,lng:115},{-5,lng:120},{lat:0,lng:125},{lat:5,lng:118},{lat:10,lng:100},{lat:18,lng:95},
+    {lat:22,lng:88},{lat:20,lng:78},{lat:16,lng:74},{lat:10,lng:76},{lat:8,lng:78},{lat:15,lng:73},{lat:22,lng:68},{lat:28,lng:64},
+    {lat:32,lng:60},{lat:36,lng:54},{lat:38,lng:48},{lat:36,lng:42},{lat:38,lng:36},{lat:42,lng:36},{lat:47,lng:38},{lat:52,lng:42},
+    {lat:55,lng:40},{lat:60,lng:38},{lat:66,lng:30},
+  ]},
+  { name:'Australia', points:[
+    {lat:-12,lng:128},{-15,lng:125},{-18,lng:122},{-22,lng:114},{-26,lng:114},{-30,lng:115},{-33,lng:116},{-35,lng:118},
+    {-35,lng:138},{-33,lng:140},{-28,lng:145},{-24,lng:148},{-20,lng:148},{-16,lng:146},{-12,lng:142},{-10,lng:136},{-10,lng:132},
+  ]},
+];
+
+function latLngToVec3(lat,lng,r) {
+  const phi=(90-lat)*Math.PI/180, theta=(lng+180)*Math.PI/180;
+  return new THREE.Vector3(-r*Math.sin(phi)*Math.cos(theta), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(theta));
+}
+
+function getAge(birthYear, birthMonth, birthDay) {
+  const now=new Date(); let age=now.getFullYear()-birthYear;
+  const m=now.getMonth()+1, d=now.getDate();
+  if(m<birthMonth||(m===birthMonth&&d<birthDay)) age--;
+  return age;
+}
+function isBirthdayToday(birthMonth, birthDay) {
+  const now=new Date(); return (now.getMonth()+1)===birthMonth&&now.getDate()===birthDay;
+}
+function daysUntil(birthYear,birthMonth,birthDay) {
+  const now=new Date(); const next=new Date(now.getFullYear(),birthMonth-1,birthDay);
+  if(now>next) next.setFullYear(next.getFullYear()+1);
+  return Math.ceil((next-now)/86400000);
+}
+function getOrdinal(n){ const s=['th','st','nd','rd'], v=n%100; return s[(v-20)%10]||s[v]||s[0]; }
+
+function getYearRanges(birthYear, currentAge) {
+  const ranges=[]; const startAge=20;
+  for(let a=startAge;a<=currentAge;a++){ const y1=birthYear+a, y2=birthYear+a+1; ranges.push({age:a,nextAge:a+1,year1:y1,year2:y2,key:`${a}-${a+1}`}); }
+  ranges.reverse(); return ranges;
+}
+
+function createGlobe() {
+  const t = THEMES[globe.theme] || THEMES.pink;
+  scene = new THREE.Scene();
+  const gc = document.getElementById('globe-container');
+  const w=gc.clientWidth, h=gc.clientHeight;
+  camera = new THREE.PerspectiveCamera(45,w/h,0.1,1000);
+  camera.position.z=4.5;
+  renderer = new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer.setSize(w,h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setClearColor(new THREE.Color(t.bg),1);
+  gc.appendChild(renderer.domElement);
+
+  globeGroup = new THREE.Group(); scene.add(globeGroup);
+
+  const c1=new THREE.Color(t.dark), c2=new THREE.Color(t.light);
+  const geom=new THREE.SphereGeometry(1.5,128,128);
+  const pos=geom.attributes.position;
+  const colors=new Float32Array(pos.count*3);
+  for(let i=0;i<pos.count;i++){ const y=pos.getY(i), mix=(y+1.5)/3; const c=new THREE.Color().lerpColors(c1,c2,mix); colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b; }
+  geom.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  globeGroup.add(new THREE.Mesh(geom,new THREE.MeshPhongMaterial({vertexColors:true,shininess:30,specular:new THREE.Color(t.primary),transparent:true,opacity:0.9})));
+
+  const atmoG=new THREE.SphereGeometry(1.58,64,64);
+  globeGroup.add(new THREE.Mesh(atmoG,new THREE.ShaderMaterial({
+    vertexShader:`varying vec3 vN; void main(){ vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader:`varying vec3 vN; void main(){ float i=pow(0.7-dot(vN,vec3(0,0,1)),3.0); gl_FragColor=vec4(${new THREE.Color(t.primary).r},${new THREE.Color(t.primary).g},${new THREE.Color(t.primary).b},i*0.6); }`,
+    blending:THREE.AdditiveBlending,side:THREE.FrontSide,transparent:true,depthWrite:false,
+  })));
+
+  const gridG=new THREE.SphereGeometry(1.503,48,24);
+  globeGroup.add(new THREE.Mesh(gridG,new THREE.MeshBasicMaterial({color:new THREE.Color(t.primary),wireframe:true,transparent:true,opacity:0.05})));
+
+  const ringG=new THREE.TorusGeometry(1.53,0.005,16,100);
+  const ringM=new THREE.MeshBasicMaterial({color:new THREE.Color(t.light),transparent:true,opacity:0.3});
+  const r1=new THREE.Mesh(ringG,ringM), r2=new THREE.Mesh(ringG,ringM); r2.rotation.x=Math.PI/2;
+  globeGroup.add(r1); globeGroup.add(r2);
+
+  const oCount=3000, oGeom=new THREE.BufferGeometry();
+  const oPos=new Float32Array(oCount*3), oRand=new Float32Array(oCount);
+  for(let i=0;i<oCount;i++){ const th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=1.505+Math.random()*0.08; oPos[i*3]=r*Math.sin(ph)*Math.cos(th); oPos[i*3+1]=r*Math.sin(ph)*Math.sin(th); oPos[i*3+2]=r*Math.cos(ph); oRand[i]=Math.random()*Math.PI*2; }
+  oGeom.setAttribute('position',new THREE.BufferAttribute(oPos,3)); oGeom.setAttribute('phase',new THREE.BufferAttribute(oRand,1));
+  oceanParticles=new THREE.Points(oGeom,new THREE.ShaderMaterial({
+    uniforms:{uTime:{value:0},uColor1:{value:new THREE.Color(t.primary)},uColor2:{value:new THREE.Color(t.light)}},
+    vertexShader:`attribute float phase; varying float vP; void main(){ vec4 mp=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mp; vP=phase; gl_PointSize=2.5; }`,
+    fragmentShader:`varying float vP; uniform float uTime; uniform vec3 uColor1; uniform vec3 uColor2; void main(){ float d=length(gl_PointCoord-vec2(0.5))*2.0; if(d>1.0) discard; float s=smoothstep(0.8,0.0,d)*0.9; float t=sin(vP+uTime*2.0)*0.5+0.5; gl_FragColor=vec4(mix(uColor1,uColor2,t),s*(0.3+t*0.7)); }`,
+    blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,
+  })); globeGroup.add(oceanParticles);
+
+  shootingStars=[]; heartOrbits=[];
+
+  const sGeom=new THREE.BufferGeometry();
+  const sCount=1200, sPos=new Float32Array(sCount*3), sPhase=new Float32Array(sCount);
+  for(let i=0;i<sCount;i++){ const th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1), r=7+Math.random()*14; sPos[i*3]=r*Math.sin(ph)*Math.cos(th); sPos[i*3+1]=r*Math.sin(ph)*Math.sin(th); sPos[i*3+2]=r*Math.cos(ph); sPhase[i]=Math.random()*Math.PI*2; }
+  sGeom.setAttribute('position',new THREE.BufferAttribute(sPos,3)); sGeom.setAttribute('phase',new THREE.BufferAttribute(sPhase,1));
+  starMat=new THREE.ShaderMaterial({
+    uniforms:{uTime:{value:0}},
+    vertexShader:`attribute float phase; varying float vP; void main(){ vec4 mp=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mp; vP=phase; gl_PointSize=1.5+sin(phase)*0.8; }`,
+    fragmentShader:`varying float vP; uniform float uTime; void main(){ float d=length(gl_PointCoord-vec2(0.5))*2.0; if(d>1.0) discard; float t=sin(vP+uTime*1.3)*0.5+0.5; gl_FragColor=vec4(mix(vec3(${c2.r*0.8},${c2.g*0.8},${c2.b*0.8}),vec3(${t===c2.r?1:c2.r},${c2.g},${c2.b}),t),(1.0-d)*0.6*(0.3+t*0.7)); }`,
+    blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,
+  }); starField=new THREE.Points(sGeom,starMat); scene.add(starField);
+
+  for(let i=0;i<5;i++){ const g=new THREE.BufferGeometry(); const p=new Float32Array(6); p[0]=(Math.random()-0.5)*10; p[1]=(Math.random()-0.5)*10; p[2]=(Math.random()-0.5)*8; p[3]=p[0]+(Math.random()-0.5)*4; p[4]=p[1]+(Math.random()-0.5)*4; p[5]=p[2]+(Math.random()-0.5)*4; g.setAttribute('position',new THREE.BufferAttribute(p,3)); const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:new THREE.Color(t.light),transparent:true,opacity:0})); l.visible=false; shootingStars.push({line:l,life:0,maxLife:0,vel:new THREE.Vector3()}); scene.add(l); }
+
+  for(let i=0;i<12;i++){ const hc=document.createElement('canvas'); hc.width=hc.height=32; const hctx=hc.getContext('2d'); hctx.font='20px serif'; hctx.textAlign='center'; hctx.textBaseline='middle'; hctx.fillText('💖',16,16); const hMat=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(hc),transparent:true,blending:THREE.AdditiveBlending,depthTest:true}); const hSpr=new THREE.Sprite(hMat); hSpr.scale.set(0.15,0.15,1); heartOrbits.push({sprite:hSpr,radius:1.7+i*0.08,speed:0.2+Math.random()*0.4,phase:Math.random()*Math.PI*2,tilt:(Math.random()-0.5)*1.2,yOffset:(Math.random()-0.5)*0.8}); globeGroup.add(hSpr); }
+
+  constellationLines=new THREE.Group(); globeGroup.add(constellationLines);
+
+  CONTINENT_POINTS.forEach(cont=>{ const pts=cont.points.map(p=>latLngToVec3(p.lat,p.lng,1.51)); pts.push(pts[0].clone()); globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:new THREE.Color(t.primary),transparent:true,opacity:0.25}))); });
+
+  spriteGroup=new THREE.Group(); globeGroup.add(spriteGroup);
+
+  scene.add(new THREE.AmbientLight(0x444466,1.2));
+  const sun=new THREE.DirectionalLight(new THREE.Color(t.light),2.5); sun.position.set(5,3,5); scene.add(sun);
+  scene.add(new THREE.DirectionalLight(0x8866aa,0.8).position.set(-3,-1,-2));
+  const bl=new THREE.PointLight(new THREE.Color(t.primary),2.5,8); bl.position.set(0,0,-4); scene.add(bl);
+
+  renderer.domElement.addEventListener('pointerdown',onPD);
+  renderer.domElement.addEventListener('pointermove',onPM);
+  window.addEventListener('pointerup',onPU);
+  renderer.domElement.addEventListener('click',onTap);
+  renderer.domElement.style.touchAction='none';
+  window.addEventListener('resize',onResize);
+  animate();
+}
+
+function onPD(e){ e.preventDefault(); isDragging=true; autoRotate=false; totalDrag=0; const p=e.touches?e.touches[0]:e; dragStart.x=prevMouse.x=p.clientX; dragStart.y=prevMouse.y=p.clientY; if(e.touches&&e.touches.length===2){ pinchStartDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); pinchStartZ=camera.position.z; } }
+function onPM(e){ e.preventDefault(); if(!isDragging) return; if(e.touches&&e.touches.length===2){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); camera.position.z=Math.max(2.5,Math.min(8,pinchStartZ*pinchStartDist/Math.max(d,0.1))); return; } const p=e.touches?e.touches[0]:e; const dx=p.clientX-prevMouse.x, dy=p.clientY-prevMouse.y; totalDrag+=Math.abs(dx)+Math.abs(dy); rotVel.x=dy*0.005; rotVel.y=dx*0.005; globeGroup.rotation.x+=rotVel.x; globeGroup.rotation.y+=rotVel.y; prevMouse.x=p.clientX; prevMouse.y=p.clientY; }
+function onPU(e){ e.preventDefault(); if(totalDrag<5) isDragging=false; else setTimeout(()=>{autoRotate=true;},2000); }
+function onResize(){ const w=document.getElementById('globe-container').clientWidth, h=document.getElementById('globe-container').clientHeight; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); }
+
+function onTap(e){
+  if(isDragging||totalDrag>=5) return;
+  const mx=(e.clientX/window.innerWidth)*2-1, my=-(e.clientY/window.innerHeight)*2+1;
+  const rc=new THREE.Raycaster(); rc.setFromCamera(new THREE.Vector2(mx,my),camera);
+  const hits=rc.intersectObjects(spriteGroup.children,true);
+  if(hits.length>0){ let obj=hits[0].object; while(obj){ if(obj.userData&&obj.userData.photoId){ showPhoto(obj.userData.photoId); return; } obj=obj.parent; } }
+}
+
+function createPhotoSprite(photo){
+  const c=document.createElement('canvas'); c.width=c.height=64; const ctx=c.getContext('2d');
+  const img=new Image();
+  img.onload=()=>{
+    ctx.beginPath(); ctx.arc(32,32,28,0,Math.PI*2); ctx.clip(); ctx.drawImage(img,0,0,64,64);
+    ctx.beginPath(); ctx.arc(32,32,28,0,Math.PI*2); ctx.lineWidth=2.5; ctx.strokeStyle=theme.primary; ctx.stroke();
+    const tex=new THREE.CanvasTexture(c);
+    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:true}));
+    sprite.scale.set(0.18,0.18,1); sprite.position.copy(latLngToVec3(photo.lat,photo.lng,BASE_RADIUS)); sprite.userData={photoId:photo.id};
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.08,8),new THREE.MeshBasicMaterial({color:new THREE.Color(theme.primary)}));
+    const inner=latLngToVec3(photo.lat,photo.lng,BASE_RADIUS-0.07), outer=latLngToVec3(photo.lat,photo.lng,BASE_RADIUS);
+    pole.position.copy(inner.add(outer).multiplyScalar(0.5)); pole.lookAt(outer); pole.rotateX(Math.PI/2); pole.userData={photoId:photo.id};
+    const aura=new THREE.Mesh(new THREE.RingGeometry(0.095,0.105,32),new THREE.MeshBasicMaterial({color:new THREE.Color(theme.primary),side:THREE.DoubleSide,transparent:true,opacity:0.6}));
+    aura.position.copy(latLngToVec3(photo.lat,photo.lng,BASE_RADIUS+0.01)); aura.lookAt(new THREE.Vector3(0,0,0)); aura.userData={photoId:photo.id,isAura:true};
+    spriteGroup.add(pole); spriteGroup.add(sprite); spriteGroup.add(aura); photoSprites.push({sprite,pole,aura,id:photo.id});
+  };
+  img.src=photo.data_url;
+}
+
+function clearSprites(){
+  while(spriteGroup.children.length>0){ const c=spriteGroup.children[0]; if(c.material&&c.material.map) c.material.map.dispose(); if(c.material) c.material.dispose(); spriteGroup.remove(c); }
+  photoSprites=[];
+}
+function drawConstellationLines(photos){
+  while(constellationLines.children.length>0){ const c=constellationLines.children[0]; if(c.geometry) c.geometry.dispose(); if(c.material) c.material.dispose(); constellationLines.remove(c); }
+  if(!photos||photos.length<2) return;
+  const byCont={}; photos.forEach(p=>{ const cont=p.continent||'unknown'; if(!byCont[cont]) byCont[cont]=[]; byCont[cont].push(p); });
+  Object.values(byCont).forEach(group=>{ for(let i=0;i<group.length;i++){ for(let j=i+1;j<group.length;j++){ const da=group[i].lat-group[j].lat, db=group[i].lng-group[j].lng; if(Math.sqrt(da*da+db*db)<18){ const a=latLngToVec3(group[i].lat,group[i].lng,BASE_RADIUS+0.02), b=latLngToVec3(group[j].lat,group[j].lng,BASE_RADIUS+0.02); const mid=a.clone().add(b).multiplyScalar(0.5); const cp=mid.clone().normalize().multiplyScalar(BASE_RADIUS+0.12); const curve=new THREE.QuadraticBezierCurve3(a,cp,b); constellationLines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(16)),new THREE.LineBasicMaterial({color:new THREE.Color(theme.primary),transparent:true,opacity:0.2}))); } } } });
+}
+async function reloadPhotos(){ clearSprites(); const photos=await fetchPhotos(globe.id,currentYearKey); photos.forEach(p=>createPhotoSprite(p)); drawConstellationLines(photos); document.getElementById('memory-count').textContent=photoSprites.length+(photoSprites.length===1?' memory':' memories'); }
+
+function showPhoto(id){ fetchPhotos(globe.id,currentYearKey).then(photos=>{ const p=photos.find(x=>x.id===id); if(p){ document.getElementById('photo-full').src=p.data_url; document.getElementById('photo-modal').classList.add('show'); } }); }
+
+function animate(){
+  requestAnimationFrame(animate);
+  oceanTime+=0.016;
+  if(oceanParticles) oceanParticles.material.uniforms.uTime.value=oceanTime;
+  if(starMat) starMat.uniforms.uTime.value=oceanTime;
+  shootingStars.forEach(ss=>{
+    if(ss.life>0){ ss.life-=0.016; const prog=ss.life/ss.maxLife; ss.line.material.opacity=prog*0.7; const pos=ss.line.geometry.attributes.position; for(let i=0;i<2;i++) pos.setXYZ(i,pos.getX(i)+ss.vel.x*0.016,pos.getY(i)+ss.vel.y*0.016,pos.getZ(i)+ss.vel.z*0.016); pos.needsUpdate=true; if(ss.life<=0){ ss.line.visible=false; ss.line.material.opacity=0; } }
+    else if(Math.random()<0.005){ const start=new THREE.Vector3((Math.random()-0.5)*12,(Math.random()-0.5)*8,(Math.random()-0.5)*10); const dir=new THREE.Vector3((Math.random()-0.5)*4,(Math.random()-0.5)*4,(Math.random()-0.5)*4); ss.vel.copy(dir.clone().normalize().multiplyScalar(8+Math.random()*12)); ss.maxLife=1+Math.random()*2; ss.life=ss.maxLife; const pos=ss.line.geometry.attributes.position; pos.setXYZ(0,start.x,start.y,start.z); pos.setXYZ(1,start.x+dir.x,start.y+dir.y,start.z+dir.z); pos.needsUpdate=true; ss.line.visible=true; ss.line.material.opacity=0.7; }
+  });
+  heartOrbits.forEach(h=>{ h.phase+=h.speed*0.016; const x=Math.cos(h.phase)*h.radius, z=Math.sin(h.phase)*h.radius, y=Math.sin(h.phase*2+h.tilt)*h.yOffset; h.sprite.position.set(x,y,z); h.sprite.material.opacity=0.3+Math.sin(h.phase*2)*0.2; });
+  if(autoRotate&&!isDragging){ globeGroup.rotation.y+=AUTO_ROTATE_SPEED; rotVel.x*=0.95; rotVel.y*=0.95; }
+  else if(!isDragging){ if(Math.abs(rotVel.x)>0.0001||Math.abs(rotVel.y)>0.0001){ globeGroup.rotation.x+=rotVel.x; globeGroup.rotation.y+=rotVel.y; rotVel.x*=0.95; rotVel.y*=0.95; } }
+  renderer.render(scene,camera);
+}
+
+document.getElementById('modal-close-btn').addEventListener('click',()=>{ document.getElementById('photo-modal').classList.remove('show'); });
+
+async function init(){
+  const slug = window.location.pathname.replace(/^\//,'').replace(/\/$/,'') || 'default';
+  
+  globe = await fetchGlobe(slug);
+  if(!globe) { document.getElementById('loading-screen').classList.add('done'); document.getElementById('not-found').classList.add('show'); return; }
+  
+  theme = THEMES[globe.theme] || THEMES.pink;
+  
+  window.document.documentElement.style.setProperty('--pink', theme.primary);
+  window.document.documentElement.style.setProperty('--pink-light', theme.light);
+  window.document.documentElement.style.setProperty('--pink-dark', theme.dark);
+  
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', theme.primary);
+  document.getElementById('by-line').textContent = `Best Wishes From ${globe.creator_name}`;
+  document.getElementById('my-world-text').textContent = 'My World';
+  
+  const age = getAge(globe.birth_year, globe.birth_month, globe.birth_day);
+  const isBirthday = isBirthdayToday(globe.birth_month, globe.birth_day);
+  const daysLeft = daysUntil(globe.birth_year, globe.birth_month, globe.birth_day);
+  const card = document.getElementById('birthday-card');
+  
+  if(isBirthday) {
+    card.innerHTML = `<div class="confetti-row">🎉🎂🎉</div><div class="birthday-title">Happy ${age}${getOrdinal(age)} Birthday, ${globe.partner_name}!</div><div class="birthday-sub">${globe.custom_message||'You are the best thing that ever happened to me.'}</div><div class="confetti-row">🎈💝🎈</div>`;
+  } else {
+    card.innerHTML = `<div class="age-text">${globe.partner_name}, you're ${age} and you're everything.</div><div class="countdown-text">${daysLeft} days until your ${age+1}${getOrdinal(age+1)} birthday 💕</div>`;
+  }
+  
+  document.getElementById('globe-partner-name').textContent = `${globe.partner_name}'s World`;
+  
+  currentYearKey = `${age}-${age+1}`;
+  const ranges = getYearRanges(globe.birth_year, age);
+  const select = document.getElementById('year-select');
+  select.innerHTML = '';
+  ranges.forEach(r => { const opt = document.createElement('option'); opt.value = r.key; opt.textContent = `${r.age} → ${r.nextAge} (${r.year1}-${r.year2})`; if(r.key === currentYearKey) opt.selected = true; select.appendChild(opt); });
+  select.addEventListener('change', async (e) => { currentYearKey = e.target.value; await reloadPhotos(); });
+  
+  document.getElementById('loading-screen').classList.add('done');
+  
+  document.getElementById('continue-btn').addEventListener('click', () => {
+    document.getElementById('welcome-screen').classList.add('hidden');
+    document.getElementById('globe-screen').classList.add('visible');
+    createGlobe();
+    reloadPhotos();
+  });
+}
+
+init();
+
+function initSparkles(){
+  const canvas=document.getElementById('sparkles-canvas'), ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  const particles=[];
+  for(let i=0;i<80;i++) particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*1.5+0.5,vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3,a:Math.random()*0.6+0.2});
+  (function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; if(p.x<0)p.x=canvas.width; if(p.x>canvas.width)p.x=0; if(p.y<0)p.y=canvas.height; if(p.y>canvas.height)p.y=0; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle=`rgba(${parseInt(theme?theme.light.slice(1,3)||'FF':255,16)},${parseInt(theme?theme.light.slice(3,5)||'182':255,16)},${parseInt(theme?theme.light.slice(5,7)||'193':255,16)},${p.a})`; ctx.fill(); }); requestAnimationFrame(draw); })();
+}
+initSparkles();
+</script>
+</body>
+</html>

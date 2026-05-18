@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyWorld — 3D Birthday Globes That Make Them Cry</title>
+<meta name="description" content="Create a stunning 3D birthday globe for your partner. Add photos, watch them float on continents. The most romantic gift of 2026.">
+<meta property="og:title" content="MyWorld — Birthday Globes">
+<meta property="og:description" content="Create a 3D interactive birthday globe for someone special.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --pink: #FF69B4; --pink-light: #FFB6C1; --pink-dark: #DB2779;
+    --blue: #4DA6FF; --blue-light: #B3D9FF; --bg: #0a0a0f;
+    --card: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.06);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:#fff; overflow-x:hidden; }
+  section { padding:80px 20px; max-width:1100px; margin:0 auto; }
+  h1 { font-size:clamp(2rem,5vw,3.5rem); font-weight:800; line-height:1.1; }
+  h2 { font-size:clamp(1.5rem,4vw,2.5rem); font-weight:700; margin-bottom:24px; text-align:center; }
+  .gradient-text { background:linear-gradient(135deg, #FF69B4, #4DA6FF); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .btn {
+    display:inline-flex; align-items:center; gap:8px; padding:16px 36px; border-radius:50px;
+    font-size:1.1rem; font-weight:700; text-decoration:none; cursor:pointer;
+    transition:transform 0.2s,box-shadow 0.2s; border:none;
+  }
+  .btn:hover { transform:translateY(-2px); }
+  .btn-primary { background:linear-gradient(135deg, #FF69B4, #DB2779); color:#fff; box-shadow:0 4px 24px rgba(255,105,180,0.4); }
+  .btn-secondary { background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12); }
+  .btn-blue { background:linear-gradient(135deg, #4DA6FF, #2563EB); color:#fff; box-shadow:0 4px 24px rgba(77,166,255,0.4); }
+
+  header { display:flex; justify-content:space-between; align-items:center; padding:20px 40px; max-width:1200px; margin:0 auto; }
+  .logo { font-size:1.5rem; font-weight:800; letter-spacing:-1px; }
+  nav a { color:rgba(255,255,255,0.6); text-decoration:none; margin-left:32px; font-size:0.9rem; transition:color 0.2s; }
+  nav a:hover { color:#fff; }
+
+  .hero { text-align:center; padding-top:100px; }
+  .hero h1 { max-width:800px; margin:0 auto 20px; }
+  .hero p { font-size:1.2rem; color:rgba(255,255,255,0.6); max-width:600px; margin:0 auto 40px; line-height:1.6; }
+  .hero-buttons { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+
+  .demo-globe { margin:60px auto; width:min(500px,90vw); height:min(500px,90vw); border-radius:28px; overflow:hidden; border:1px solid var(--border); box-shadow:0 0 80px rgba(255,105,180,0.1); }
+
+  .features { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:24px; margin-top:40px; }
+  .feature-card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:32px; transition:transform 0.2s; }
+  .feature-card:hover { transform:translateY(-4px); }
+  .feature-icon { font-size:2.5rem; margin-bottom:16px; }
+  .feature-card h3 { font-size:1.2rem; margin-bottom:8px; }
+  .feature-card p { color:rgba(255,255,255,0.5); font-size:0.95rem; line-height:1.5; }
+
+  .themes { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:32px; }
+  .theme-dot { width:48px; height:48px; border-radius:50%; border:2px solid transparent; transition:transform 0.2s; cursor:default; }
+  .theme-dot:hover { transform:scale(1.15); }
+  .pink { background:linear-gradient(135deg, #FF69B4, #C71585); }
+  .blue { background:linear-gradient(135deg, #4DA6FF, #1E40AF); }
+  .purple { background:linear-gradient(135deg, #A855F7, #6B21A8); }
+  .emerald { background:linear-gradient(135deg, #34D399, #047857); }
+  .dark { background:#1a1a1a; border-color:#333; }
+  .sunset { background:linear-gradient(135deg, #FB923C, #C2410C); }
+
+  .pricing { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:24px; margin-top:40px; }
+  .price-card {
+    background:var(--card); border:1px solid var(--border); border-radius:20px; padding:40px 32px;
+    text-align:center; transition:transform 0.2s; position:relative;
+  }
+  .price-card.popular { border-color:rgba(255,105,180,0.3); box-shadow:0 0 40px rgba(255,105,180,0.08); }
+  .popular-badge { position:absolute; top:-14px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg, #FF69B4, #DB2779); color:#fff; padding:6px 20px; border-radius:20px; font-size:0.8rem; font-weight:700; }
+  .price { font-size:2.5rem; font-weight:800; margin:16px 0; }
+  .price span { font-size:1rem; color:rgba(255,255,255,0.4); }
+  .price-card ul { list-style:none; text-align:left; margin:24px 0; }
+  .price-card li { padding:8px 0; color:rgba(255,255,255,0.7); font-size:0.95rem; }
+  .price-card li::before { content:'✓ '; color:#34D399; margin-right:8px; }
+
+  .steps { display:flex; gap:32px; justify-content:center; margin-top:40px; flex-wrap:wrap; }
+  .step { text-align:center; max-width:200px; }
+  .step-num { width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, #FF69B4, #DB2779); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.3rem; font-weight:800; margin:0 auto 16px; }
+  .step h4 { margin-bottom:8px; }
+  .step p { color:rgba(255,255,255,0.5); font-size:0.9rem; }
+
+  .cta { text-align:center; padding:100px 20px; background:radial-gradient(ellipse at center, rgba(255,105,180,0.08), transparent); }
+  .cta h2 { margin-bottom:16px; }
+  .cta p { color:rgba(255,255,255,0.5); margin-bottom:32px; font-size:1.1rem; }
+
+  footer { text-align:center; padding:40px; color:rgba(255,255,255,0.3); font-size:0.85rem; border-top:1px solid var(--border); }
+
+  .bg-grid { position:fixed; top:0;left:0;width:100%;height:100%; pointer-events:none; z-index:-1; opacity:0.03;
+    background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  @media(max-width:768px) {
+    header { padding:16px 20px; }
+    nav { display:none; }
+    section { padding:50px 16px; }
+    .hero { padding-top:60px; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<header>
+  <div class="logo gradient-text">MyWorld</div>
+  <nav>
+    <a href="#how">How it works</a>
+    <a href="#themes">Themes</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#cta" class="btn btn-primary" style="padding:10px 24px;font-size:0.85rem;">Create Globe</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <h1>A 3D birthday globe <br><span class="gradient-text">they'll never forget</span></h1>
+  <p>Create a stunning interactive 3D globe filled with your memories. Your partner opens the link and watches their world come alive — photos floating across continents, shooting stars, orbiting hearts. The most romantic gift of 2026.</p>
+  <div class="hero-buttons">
+    <a href="/app" class="btn btn-primary">Create Your Globe →</a>
+    <a href="#how" class="btn btn-secondary">See How It Works</a>
+  </div>
+</section>
+
+<section id="how">
+  <h2>How It Works</h2>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h4>Name Your World</h4><p>Enter your partner's name, birthday, and a personal message.</p></div>
+    <div class="step"><div class="step-num">2</div><h4>Add Photos</h4><p>Upload your favorite memories. They appear as beautiful pins on real continent outlines.</p></div>
+    <div class="step"><div class="step-num">3</div><h4>Share the Link</h4><p>Send the unique link. They open it and see a stunning animated 3D globe made just for them.</p></div>
+    <div class="step"><div class="step-num">4</div><h4>They Flex 😭</h4><p>They post it on Instagram. Their friends ask where they got it. The cycle repeats.</p></div>
+  </div>
+</section>
+
+<section id="themes">
+  <h2>6 Stunning Themes</h2>
+  <p style="text-align:center;color:rgba(255,255,255,0.5);margin-bottom:24px;">Pink & Blue are free. Unlock 4 premium themes with Pro.</p>
+  <div class="themes">
+    <div class="theme-dot pink" title="Rose Pink — Free"></div>
+    <div class="theme-dot blue" title="Ocean Blue — Free"></div>
+    <div class="theme-dot purple" title="Royal Purple — Pro"></div>
+    <div class="theme-dot emerald" title="Emerald — Pro"></div>
+    <div class="theme-dot dark" title="Midnight — Pro"></div>
+    <div class="theme-dot sunset" title="Sunset — Pro"></div>
+  </div>
+  <div class="features" style="margin-top:48px;">
+    <div class="feature-card">
+      <div class="feature-icon">🌍</div>
+      <h3>3D Interactive Globe</h3>
+      <p>Drag to spin, pinch to zoom. Real continent shapes with pink glittery oceans.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📸</div>
+      <h3>Photo Continents</h3>
+      <p>Photos cluster on actual continent outlines — North America, Europe, Asia, and more.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⭐</div>
+      <h3>Starfield & Shooting Stars</h3>
+      <p>1200 twinkling stars, 5 shooting stars, 12 orbiting hearts. Pure magic.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📅</div>
+      <h3>Birthday Countdown</h3>
+      <p>Shows days until next birthday. On the big day — special message with confetti.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔔</div>
+      <h3>Reminders (App)</h3>
+      <p>Get notified 7 days before, 1 day before, and on the birthday. Never forget again.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💾</div>
+      <h3>Lives Forever</h3>
+      <p>Year-by-year photo albums. Each birthday adds a new year to the globe.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <h2>Simple Pricing</h2>
+  <div class="pricing">
+    <div class="price-card">
+      <h3>Free</h3>
+      <div class="price">$0<span>/forever</span></div>
+      <ul>
+        <li>Create 1 globe</li>
+        <li>Up to 10 photos</li>
+        <li>Pink or Blue theme</li>
+        <li>Shareable link</li>
+        <li>"Made with MyWorld" badge</li>
+      </ul>
+      <a href="/app" class="btn btn-secondary">Start Free</a>
+    </div>
+    <div class="price-card popular">
+      <div class="popular-badge">Most Popular</div>
+      <h3>Pro</h3>
+      <div class="price">$4.99<span> one-time</span></div>
+      <ul>
+        <li>Everything in Free</li>
+        <li>Unlimited photos</li>
+        <li>All 6 themes unlocked</li>
+        <li>No "Made with MyWorld" badge</li>
+        <li>Custom message on welcome screen</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="/app" class="btn btn-primary">Get Pro — $4.99</a>
+    </div>
+  </div>
+</section>
+
+<section class="cta" id="cta">
+  <h2>Make someone's birthday <span class="gradient-text">unforgettable</span></h2>
+  <p>Join thousands of couples who've already created their world.</p>
+  <a href="/app" class="btn btn-primary" style="font-size:1.2rem;padding:20px 48px;">Create Your Globe Now →</a>
+  <p style="margin-top:16px;font-size:0.85rem;color:rgba(255,255,255,0.3);">Available on Web • iOS • Android</p>
+</section>
+
+<footer>
+  <p>MyWorld &copy; 2026. Made with 💖 for people in love.</p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+  "name": "myworld-app",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.0.2",
+    "@stripe/stripe-react-native": "^0.65.1",
+    "@supabase/supabase-js": "^2.105.4",
+    "expo": "~54.0.33",
+    "expo-asset": "^55.0.17",
+    "expo-font": "^55.0.7",
+    "expo-image-manipulator": "^55.0.16",
+    "expo-image-picker": "^55.0.20",
+    "expo-notifications": "^55.0.23",
+    "expo-router": "^55.0.14",
+    "expo-splash-screen": "^55.0.21",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "^2.31.2",
+    "react-native-reanimated": "^4.3.1",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.25.0",
+    "react-native-webview": "^13.16.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}

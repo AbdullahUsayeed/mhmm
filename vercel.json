@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/landing/index.html" },
+    { "source": "/:slug", "destination": "/public/index.html" }
+  ],
+  "cleanUrls": true
+}
