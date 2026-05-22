@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a001a">
+<title>Add Photos — Raisa's World</title>
+<style>
+  :root { --pink: #FF69B4; --pink-light: #FFB6C1; --bg: #1a001a; --bg-card: rgba(255,105,180,0.08); --border: rgba(255,105,180,0.15); }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: radial-gradient(ellipse at center, #3d004d 0%, #1a001a 50%, #0a000a 100%);
+  }
+  .container { width:100%; max-width:420px; }
+  h1 {
+    text-align: center; font-size: 1.8rem; margin-bottom: 4px;
+    background: linear-gradient(135deg, #FF69B4, #FFB6C1);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .subtitle { text-align: center; color: rgba(255,182,193,0.6); font-size: 0.85rem; margin-bottom: 28px; }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 24px; margin-bottom: 16px;
+  }
+  .upload-area {
+    border: 2px dashed rgba(255,105,180,0.3); border-radius: 16px;
+    padding: 40px 20px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .upload-area:hover, .upload-area.drag-over { border-color: #FF69B4; background: rgba(255,105,180,0.05); }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 8px; }
+  .upload-text { color: var(--pink-light); font-size: 0.95rem; }
+  .upload-hint { color: rgba(255,182,193,0.35); font-size: 0.75rem; margin-top: 4px; }
+  .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+  .preview-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 2px solid var(--border); }
+  .preview-item img { width:100%; height:100%; object-fit: cover; }
+  .preview-remove {
+    position: absolute; top: 4px; right: 4px; width: 22px; height: 22px;
+    border-radius: 11px; background: rgba(0,0,0,0.7); border: none; color: #fff;
+    font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .btn {
+    width: 100%; padding: 14px; border-radius: 14px; border: none;
+    font-size: 1rem; font-weight: 600; cursor: pointer; transition: transform 0.15s, opacity 0.15s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary {
+    background: linear-gradient(135deg, #FF69B4, #DB2779);
+    color: #fff; box-shadow: 0 4px 20px rgba(255,105,180,0.35);
+  }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .status { text-align: center; font-size: 0.85rem; margin-top: 12px; min-height: 20px; }
+  .status.success { color: #34D399; }
+  .status.error { color: #F87171; }
+  .status.loading { color: var(--pink-light); }
+  .counter { text-align: center; color: rgba(255,182,193,0.5); font-size: 0.8rem; margin-top: 8px; }
+  .view-link { text-align: center; margin-top: 20px; }
+  .view-link a { color: var(--pink); text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+  .loading-dots { display: inline-block; }
+  .loading-dots::after { content: '...'; animation: dots 1.5s steps(4,end) infinite; }
+  @keyframes dots { 0%,20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%,100% { content: '...'; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Raisa's World</h1>
+  <p class="subtitle">Add photos to her globe</p>
+
+  <div class="card">
+    <div class="upload-area" id="upload-area">
+      <div class="upload-icon">📸</div>
+      <div class="upload-text">Tap to add photos</div>
+      <div class="upload-hint">From gallery or camera</div>
+    </div>
+    <input type="file" id="file-input" accept="image/*" multiple style="display:none">
+    <div class="preview-grid" id="preview-grid"></div>
+  </div>
+
+  <button class="btn btn-primary" id="upload-btn" disabled>Add to Globe</button>
+  <div class="counter" id="counter"></div>
+  <div class="status" id="status"></div>
+  <div class="view-link"><a href="/raisa" target="_blank">View Raisa's Globe →</a></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ykpsbzbwyctburjesrod.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_kHCzuXOC8mpoMHAV7grCpA_nRVgQYYj';
+const GLOBE_SLUG = 'raisa';
+
+const CONTINENTS = [
+  { name:'North America', latRange:[35,60], lngRange:[-125,-70] },
+  { name:'South America', latRange:[-25,10], lngRange:[-80,-35] },
+  { name:'Europe', latRange:[38,65], lngRange:[-10,40] },
+  { name:'Africa', latRange:[-20,35], lngRange:[-15,50] },
+  { name:'Asia', latRange:[15,65], lngRange:[60,145] },
+  { name:'Australia', latRange:[-35,-10], lngRange:[115,155] },
+];
+
+function randomInRange(min,max) { return min + Math.random()*(max-min); }
+function getContinent(lat,lng) {
+  for (const c of CONTINENTS) {
+    if (lat>=c.latRange[0]&&lat<=c.latRange[1]&&lng>=c.lngRange[0]&&lng<=c.lngRange[1]) return c.name;
+  }
+  return 'Asia';
+}
+function randomPosition() {
+  const c = CONTINENTS[Math.floor(Math.random()*CONTINENTS.length)];
+  return { lat:randomInRange(c.latRange[0],c.latRange[1]), lng:randomInRange(c.lngRange[0],c.lngRange[1]) };
+}
+function getAge() {
+  const b = new Date(2006,9,23), now = new Date();
+  let age = now.getFullYear()-2006;
+  if (now.getMonth()<9||(now.getMonth()===9&&now.getDate()<23)) age--;
+  return age;
+}
+
+let pendingFiles = [];
+let globeId = null;
+
+async function getGlobeId() {
+  const cached = sessionStorage.getItem('globe_id');
+  if (cached) return cached;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/globes?slug=eq.${GLOBE_SLUG}&select=id`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+  });
+  const data = await res.json();
+  if (data.length) { sessionStorage.setItem('globe_id', data[0].id); return data[0].id; }
+  return null;
+}
+
+async function resizeImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 300, scale = maxW / img.width;
+      canvas.width = maxW;
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+function updateUI() {
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = '';
+  pendingFiles.forEach((f,i) => {
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    const img = document.createElement('img');
+    img.src = f.preview;
+    div.appendChild(img);
+    const btn = document.createElement('button');
+    btn.className = 'preview-remove';
+    btn.textContent = '×';
+    btn.onclick = (e) => { e.stopPropagation(); pendingFiles.splice(i,1); updateUI(); };
+    div.appendChild(btn);
+    grid.appendChild(div);
+  });
+  document.getElementById('upload-btn').disabled = pendingFiles.length === 0;
+  document.getElementById('counter').textContent = pendingFiles.length ? `${pendingFiles.length} photo${pendingFiles.length>1?'s':''} selected` : '';
+}
+
+document.getElementById('upload-area').addEventListener('click', () => document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change', (e) => {
+  for (const file of e.target.files) {
+    pendingFiles.push({ file, preview: URL.createObjectURL(file) });
+  }
+  updateUI();
+  e.target.value = '';
+});
+
+document.getElementById('upload-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('upload-btn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.textContent = 'Uploading...';
+  status.className = 'status loading';
+
+  if (!globeId) globeId = await getGlobeId();
+  if (!globeId) {
+    status.textContent = 'Globe not found. Run the SQL setup first.';
+    status.className = 'status error';
+    btn.disabled = false;
+    return;
+  }
+
+  const yearKey = `${getAge()}-${getAge()+1}`;
+  let success = 0, fail = 0;
+
+  for (const pf of pendingFiles) {
+    try {
+      const dataUrl = await resizeImage(pf.file);
+      const pos = randomPosition();
+      const id = Date.now().toString() + Math.random().toString(36).slice(2, 8);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/photos`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          id, globe_id: globeId, data_url: dataUrl, lat: pos.lat, lng: pos.lng,
+          year_key: yearKey, continent: getContinent(pos.lat, pos.lng)
+        })
+      });
+      if (res.ok) { success++; } else { fail++; }
+    } catch (e) { fail++; }
+  }
+
+  if (success > 0) {
+    status.textContent = `Added ${success} photo${success>1?'s':''}! ${fail>0?`(${fail} failed)` : ''}`;
+    status.className = 'status success';
+    pendingFiles = [];
+    updateUI();
+  } else {
+    status.textContent = 'Failed to upload. Try again.';
+    status.className = 'status error';
+    btn.disabled = false;
+  }
+});
+
+getGlobeId();
+</script>
+</body>
+</html>

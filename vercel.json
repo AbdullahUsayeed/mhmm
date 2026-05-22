@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/", "destination": "/landing/index.html" },
+    { "source": "/add", "destination": "/upload/index.html" },
     { "source": "/:slug", "destination": "/viewer/index.html" }
   ]
 }

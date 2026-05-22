@@ -119,7 +119,6 @@
   <div class="birthday-card" id="birthday-card"></div>
   <button class="continue-btn" id="continue-btn">Continue →</button>
   <div class="tap-hint">tap to enter your world</div>
-  <div class="make-your-own"><a href="/">✨ Make one for someone special</a></div>
 </div>
 
 <div id="globe-screen">
@@ -150,8 +149,9 @@ function sbHeaders() {
 
 async function fetchGlobe(slug) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/globes?slug=eq.${encodeURIComponent(slug)}&select=*`, { headers: sbHeaders() });
-  if (!res.ok || !(await res.json()).length) return null;
-  return (await res.json())[0];
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.length ? data[0] : null;
 }
 
 async function fetchPhotos(globeId, yearKey) {
@@ -243,7 +243,7 @@ function daysUntil(birthYear,birthMonth,birthDay) {
 function getOrdinal(n){ const s=['th','st','nd','rd'], v=n%100; return s[(v-20)%10]||s[v]||s[0]; }
 
 function getYearRanges(birthYear, currentAge) {
-  const ranges=[]; const startAge=20;
+  const ranges=[]; const startAge=0;
   for(let a=startAge;a<=currentAge;a++){ const y1=birthYear+a, y2=birthYear+a+1; ranges.push({age:a,nextAge:a+1,year1:y1,year2:y2,key:`${a}-${a+1}`}); }
   ranges.reverse(); return ranges;
 }
@@ -306,7 +306,7 @@ function createGlobe() {
   starMat=new THREE.ShaderMaterial({
     uniforms:{uTime:{value:0}},
     vertexShader:`attribute float phase; varying float vP; void main(){ vec4 mp=modelViewMatrix*vec4(position,1.0); gl_Position=projectionMatrix*mp; vP=phase; gl_PointSize=1.5+sin(phase)*0.8; }`,
-    fragmentShader:`varying float vP; uniform float uTime; void main(){ float d=length(gl_PointCoord-vec2(0.5))*2.0; if(d>1.0) discard; float t=sin(vP+uTime*1.3)*0.5+0.5; gl_FragColor=vec4(mix(vec3(${c2.r*0.8},${c2.g*0.8},${c2.b*0.8}),vec3(${t===c2.r?1:c2.r},${c2.g},${c2.b}),t),(1.0-d)*0.6*(0.3+t*0.7)); }`,
+    fragmentShader:`varying float vP; uniform float uTime; void main(){ float d=length(gl_PointCoord-vec2(0.5))*2.0; if(d>1.0) discard; float t=sin(vP+uTime*1.3)*0.5+0.5; gl_FragColor=vec4(mix(vec3(${c2.r*0.8},${c2.g*0.8},${c2.b*0.8}),vec3(${c2.r},${c2.g},${c2.b}),t),(1.0-d)*0.6*(0.3+t*0.7)); }`,
     blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,
   }); starField=new THREE.Points(sGeom,starMat); scene.add(starField);
 
@@ -398,43 +398,43 @@ function animate(){
 document.getElementById('modal-close-btn').addEventListener('click',()=>{ document.getElementById('photo-modal').classList.remove('show'); });
 
 async function init(){
-  const slug = window.location.pathname.replace(/^\//,'').replace(/\/$/,'') || 'default';
-  
+  const slug = window.location.pathname.replace(/^\//,'').replace(/\/$/,'') || 'raisa';
+
   globe = await fetchGlobe(slug);
   if(!globe) { document.getElementById('loading-screen').classList.add('done'); document.getElementById('not-found').classList.add('show'); return; }
-  
+
   theme = THEMES[globe.theme] || THEMES.pink;
-  
+
   window.document.documentElement.style.setProperty('--pink', theme.primary);
   window.document.documentElement.style.setProperty('--pink-light', theme.light);
   window.document.documentElement.style.setProperty('--pink-dark', theme.dark);
-  
+
   document.querySelector('meta[name="theme-color"]').setAttribute('content', theme.primary);
   document.getElementById('by-line').textContent = `Best Wishes From ${globe.creator_name}`;
   document.getElementById('my-world-text').textContent = 'My World';
-  
+
   const age = getAge(globe.birth_year, globe.birth_month, globe.birth_day);
   const isBirthday = isBirthdayToday(globe.birth_month, globe.birth_day);
   const daysLeft = daysUntil(globe.birth_year, globe.birth_month, globe.birth_day);
   const card = document.getElementById('birthday-card');
-  
+
   if(isBirthday) {
     card.innerHTML = `<div class="confetti-row">🎉🎂🎉</div><div class="birthday-title">Happy ${age}${getOrdinal(age)} Birthday, ${globe.partner_name}!</div><div class="birthday-sub">${globe.custom_message||'You are the best thing that ever happened to me.'}</div><div class="confetti-row">🎈💝🎈</div>`;
   } else {
     card.innerHTML = `<div class="age-text">${globe.partner_name}, you're ${age} and you're everything.</div><div class="countdown-text">${daysLeft} days until your ${age+1}${getOrdinal(age+1)} birthday 💕</div>`;
   }
-  
+
   document.getElementById('globe-partner-name').textContent = `${globe.partner_name}'s World`;
-  
+
   currentYearKey = `${age}-${age+1}`;
   const ranges = getYearRanges(globe.birth_year, age);
   const select = document.getElementById('year-select');
   select.innerHTML = '';
   ranges.forEach(r => { const opt = document.createElement('option'); opt.value = r.key; opt.textContent = `${r.age} → ${r.nextAge} (${r.year1}-${r.year2})`; if(r.key === currentYearKey) opt.selected = true; select.appendChild(opt); });
   select.addEventListener('change', async (e) => { currentYearKey = e.target.value; await reloadPhotos(); });
-  
+
   document.getElementById('loading-screen').classList.add('done');
-  
+
   document.getElementById('continue-btn').addEventListener('click', () => {
     document.getElementById('welcome-screen').classList.add('hidden');
     document.getElementById('globe-screen').classList.add('visible');
